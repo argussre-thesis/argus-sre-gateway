@@ -17,6 +17,7 @@ import {
   type RunnerAuth,
   type ServerToClientEvents,
 } from "../protocol.ts";
+import { verifyToken, type Cluster } from "./util/verifyToken.ts";
 
 export type GatewayResult =
   | { ok: true; data: unknown }
@@ -32,8 +33,6 @@ export type GatewayResult =
       };
     };
 
-type Cluster = { tenantId: string; clusterName: string };
-
 interface SocketData extends Cluster {
   pending: Set<(result: GatewayResult) => void>;
 }
@@ -43,33 +42,6 @@ type RunnerSocket = Socket<
   Record<never, never>,
   SocketData
 >;
-
-// null: the token is invalid or revoked. Throws when the backend can't tell.
-async function verifyToken(
-  config: Config,
-  token: string,
-): Promise<Cluster | null> {
-  const res = await fetch(
-    new URL("/internal/v1/runner-tokens/verify", config.backendUrl),
-    {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${config.backendToken}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ token }),
-      signal: AbortSignal.timeout(5_000),
-    },
-  );
-  const body = (await res.json()) as {
-    data: Cluster;
-    error?: { code: string };
-  };
-  if (res.ok) return body.data;
-  // A 401 for our own BACKEND_TOKEN must not count as a bad runner token, or a config mistake would drop every runner.
-  if (body.error?.code === "INVALID_RUNNER_TOKEN") return null;
-  throw new Error(`backend answered ${res.status} ${body.error?.code}`);
-}
 
 export async function startRunnerServer(config: Config, pingInterval = 25_000) {
   const runners = new Map<string, RunnerSocket>();
@@ -224,7 +196,7 @@ export async function startRunnerServer(config: Config, pingInterval = 25_000) {
         });
         resolve(result);
       };
-      
+
       const timer = setTimeout(
         () =>
           done({
