@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { loadConfig } from "../src/config.ts";
 
-const BACKEND_TOKEN = "t".repeat(32);
-const required = { BACKEND_URL: "http://127.0.0.1:5000", BACKEND_TOKEN };
+const GATEWAY_BACKEND_TOKEN = "t".repeat(32);
+const required = { BACKEND_URL: "http://127.0.0.1:5000", GATEWAY_BACKEND_TOKEN };
 
 test("defaults with only the required values", () => {
-  const defaults = { port: 8080, backendUrl: "http://127.0.0.1:5000", backendToken: BACKEND_TOKEN };
+  const defaults = { port: 8080, backendUrl: "http://127.0.0.1:5000", gatewayBackendToken: GATEWAY_BACKEND_TOKEN };
   assert.deepEqual(loadConfig(required), defaults);
   // `KEY=` lines in a .env file count as unset.
   assert.deepEqual(loadConfig({ ...required, PORT: "" }), defaults);
@@ -16,12 +16,12 @@ test("set values are used", () => {
   assert.deepEqual(loadConfig({ ...required, PORT: "9000", BACKEND_URL: "https://api.argus.example" }), {
     port: 9000,
     backendUrl: "https://api.argus.example",
-    backendToken: BACKEND_TOKEN,
+    gatewayBackendToken: GATEWAY_BACKEND_TOKEN,
   });
 });
 
 test("missing required values are rejected", () => {
-  for (const name of ["BACKEND_URL", "BACKEND_TOKEN"] as const) {
+  for (const name of ["BACKEND_URL", "GATEWAY_BACKEND_TOKEN"] as const) {
     assert.throws(() => loadConfig({ ...required, [name]: "" }), { message: `Missing required environment variable ${name}` });
   }
 });
@@ -33,7 +33,7 @@ test("bad values are rejected", () => {
   }
 });
 
-test("a short backend token is rejected without showing it", () => {
+test("a short gateway→backend token is rejected without showing it", () => {
   // The exact message: it can't contain the token.
-  assert.throws(() => loadConfig({ ...required, BACKEND_TOKEN: "s".repeat(31) }), { message: "BACKEND_TOKEN must be at least 32 characters" });
+  assert.throws(() => loadConfig({ ...required, GATEWAY_BACKEND_TOKEN: "s".repeat(31) }), { message: "GATEWAY_BACKEND_TOKEN must be at least 32 characters" });
 });

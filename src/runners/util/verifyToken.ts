@@ -11,7 +11,7 @@ export async function verifyToken(
     {
       method: "POST",
       headers: {
-        authorization: `Bearer ${config.backendToken}`,
+        authorization: `Bearer ${config.gatewayBackendToken}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({ token }),
@@ -23,7 +23,7 @@ export async function verifyToken(
     error?: { code: string };
   };
   if (res.ok) return body.data;
-  // A 401 for our own BACKEND_TOKEN must not count as a bad runner token, or a config mistake would drop every runner.
+  // A 401 for our own GATEWAY_BACKEND_TOKEN must not count as a bad runner token, or a config mistake would drop every runner.
   if (body.error?.code === "INVALID_RUNNER_TOKEN") return null;
   throw new Error(`backend answered ${res.status} ${body.error?.code}`);
 }

@@ -1,9 +1,8 @@
-// BACKEND_TOKEN is a secret: set it in .env or a Secret, never log it.
 
 export interface Config {
   port: number;
   backendUrl: string;
-  backendToken: string;
+  gatewayBackendToken: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -41,6 +40,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return {
     port: port("PORT", 8080),
     backendUrl: httpUrl("BACKEND_URL", required("BACKEND_URL")),
-    backendToken: secret("BACKEND_TOKEN"),
+    gatewayBackendToken: secret("GATEWAY_BACKEND_TOKEN"),
   };
 }

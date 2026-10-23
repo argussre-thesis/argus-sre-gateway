@@ -8,7 +8,7 @@ import { io, type Socket } from "socket.io-client";
 import { PROTOCOL_VERSION, RUNNER_PATH, type RunnerAuth } from "../src/protocol.ts";
 import { startRunnerServer } from "../src/runners/server.ts";
 
-const BACKEND_TOKEN = "b".repeat(32);
+const GATEWAY_BACKEND_TOKEN = "b".repeat(32);
 
 // Answers like the backend's verify endpoint: tokens in `valid` belong to cluster minikube of tenant t1.
 async function startBackend(t: TestContext) {
@@ -21,7 +21,7 @@ async function startBackend(t: TestContext) {
       ? [503, { success: false, error: { code: "SERVICE_UNAVAILABLE" } }]
       : req.method !== "POST" || req.url !== "/internal/v1/runner-tokens/verify"
         ? [404, { success: false, error: { code: "ROUTE_NOT_FOUND" } }]
-        : req.headers.authorization !== `Bearer ${BACKEND_TOKEN}`
+        : req.headers.authorization !== `Bearer ${GATEWAY_BACKEND_TOKEN}`
           ? [401, { success: false, error: { code: "INVALID_INTERNAL_TOKEN" } }]
           : typeof JSON.parse(body).token !== "string"
             ? [400, { success: false, error: { code: "VALIDATION_ERROR" } }]
@@ -37,8 +37,8 @@ async function startBackend(t: TestContext) {
   return backend;
 }
 
-async function startGateway(t: TestContext, backendUrl: string, backendToken = BACKEND_TOKEN) {
-  const gateway = await startRunnerServer({ port: 0, backendUrl, backendToken }, 50);
+async function startGateway(t: TestContext, backendUrl: string, gatewayBackendToken = GATEWAY_BACKEND_TOKEN) {
+  const gateway = await startRunnerServer({ port: 0, backendUrl, gatewayBackendToken }, 50);
   t.after(() => gateway.close());
   return { ...gateway, url: `http://127.0.0.1:${gateway.port}` };
 }
