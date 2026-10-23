@@ -36,25 +36,34 @@ async function connect(t: TestContext, url: string) {
 test("the tools are listed with strict schemas", async (t) => {
   const { url } = await startMcp(t);
   const { tools } = await (await connect(t, url)).listTools();
-  assert.deepEqual(tools.map((tool) => tool.name), ["list_pods", "list_deployments"]);
-  for (const tool of tools) {
-    assert.equal(tool.inputSchema.additionalProperties, false, tool.name);
-    assert.deepEqual(tool.inputSchema.required, ["namespace"], tool.name);
-  }
+  assert.deepEqual(Object.fromEntries(tools.map((tool) => [tool.name, tool.inputSchema.required])), {
+    list_pods: ["namespace"],
+    get_pod: ["namespace", "name"],
+    get_logs: ["namespace", "pod"],
+    list_events: ["namespace"],
+    list_deployments: ["namespace"],
+    list_replicasets: ["namespace"],
+  });
+  for (const tool of tools) assert.equal(tool.inputSchema.additionalProperties, false, tool.name);
 });
 
 test("a call runs its op on the URL's tenant and cluster and returns its data as text", async (t) => {
   const { url, calls } = await startMcp(t);
   const client = await connect(t, url);
-  const args = { namespace: "demo", labelSelector: "app=web" };
-  for (const op of ["list_pods", "list_deployments"]) {
-    const result = await client.callTool({ name: op, arguments: args });
-    assert.deepEqual(result, { content: [{ type: "text", text: '{"pods":[]}' }] });
+  // Every argument of every tool, named as the runner's ops name them: a renamed one fails here.
+  const cases = {
+    list_pods: { namespace: "demo", labelSelector: "app=web" },
+    get_pod: { namespace: "demo", name: "web-1" },
+    get_logs: { namespace: "demo", pod: "web-1", container: "app", previous: true, tailLines: 50, sinceSeconds: 600 },
+    list_events: { namespace: "demo", involvedObject: "Pod/web-1", type: "Warning", sinceSeconds: 600 },
+    list_deployments: { namespace: "demo", labelSelector: "app=web" },
+    list_replicasets: { namespace: "demo", labelSelector: "app=web" },
+  };
+  for (const [name, args] of Object.entries(cases)) {
+    const result = await client.callTool({ name, arguments: args });
+    assert.deepEqual(result, { content: [{ type: "text", text: '{"pods":[]}' }] }, name);
   }
-  assert.deepEqual(calls, [
-    ["t1", "minikube", "list_pods", args],
-    ["t1", "minikube", "list_deployments", args],
-  ]);
+  assert.deepEqual(calls, Object.entries(cases).map(([op, args]) => ["t1", "minikube", op, args]));
 });
 
 test("a failed op is an error result with its code", async (t) => {
