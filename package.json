@@ -11,10 +11,14 @@
     "start": "node src/index.ts",
     "dev": "node --env-file-if-exists=.env src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --test \"test/**/*.test.ts\""
+    "test": "node --test --test-timeout=10000 \"test/**/*.test.ts\""
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
+    "socket.io-client": "^4.8.4",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.4"
   }
 }
