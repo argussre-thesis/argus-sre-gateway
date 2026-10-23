@@ -9,6 +9,7 @@ import pkg from "../../package.json" with { type: "json" };
 import type { Config } from "../config.ts";
 import { log } from "../log.ts";
 import type { GatewayResult } from "../runners/server.ts";
+import { registerListDeployments } from "./tools/listDeployments.ts";
 import { registerListPods } from "./tools/listPods.ts";
 
 export type RunOp = (op: string, args: Record<string, unknown>) => Promise<CallToolResult>;
@@ -47,6 +48,7 @@ export async function startMcpServer(
           };
     };
     registerListPods(server, runOp);
+    registerListDeployments(server, runOp);
 
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

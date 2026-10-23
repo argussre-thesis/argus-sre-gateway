@@ -33,20 +33,28 @@ async function connect(t: TestContext, url: string) {
   return client;
 }
 
-test("list_pods is listed with a strict schema", async (t) => {
+test("the tools are listed with strict schemas", async (t) => {
   const { url } = await startMcp(t);
   const { tools } = await (await connect(t, url)).listTools();
-  assert.deepEqual(tools.map((tool) => tool.name), ["list_pods"]);
-  assert.equal(tools[0]!.inputSchema.additionalProperties, false);
-  assert.deepEqual(tools[0]!.inputSchema.required, ["namespace"]);
+  assert.deepEqual(tools.map((tool) => tool.name), ["list_pods", "list_deployments"]);
+  for (const tool of tools) {
+    assert.equal(tool.inputSchema.additionalProperties, false, tool.name);
+    assert.deepEqual(tool.inputSchema.required, ["namespace"], tool.name);
+  }
 });
 
-test("a call runs the op on the URL's tenant and cluster and returns its data as text", async (t) => {
+test("a call runs its op on the URL's tenant and cluster and returns its data as text", async (t) => {
   const { url, calls } = await startMcp(t);
+  const client = await connect(t, url);
   const args = { namespace: "demo", labelSelector: "app=web" };
-  const result = await (await connect(t, url)).callTool({ name: "list_pods", arguments: args });
-  assert.deepEqual(calls, [["t1", "minikube", "list_pods", args]]);
-  assert.deepEqual(result, { content: [{ type: "text", text: '{"pods":[]}' }] });
+  for (const op of ["list_pods", "list_deployments"]) {
+    const result = await client.callTool({ name: op, arguments: args });
+    assert.deepEqual(result, { content: [{ type: "text", text: '{"pods":[]}' }] });
+  }
+  assert.deepEqual(calls, [
+    ["t1", "minikube", "list_pods", args],
+    ["t1", "minikube", "list_deployments", args],
+  ]);
 });
 
 test("a failed op is an error result with its code", async (t) => {
