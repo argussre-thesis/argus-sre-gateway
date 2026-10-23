@@ -5,6 +5,7 @@ import type { AddressInfo } from "node:net";
 import { setTimeout as sleep } from "node:timers/promises";
 import { test, type TestContext } from "node:test";
 import { io, type Socket } from "socket.io-client";
+import type { Config } from "../src/config.ts";
 import { PROTOCOL_VERSION, RUNNER_PATH, type RunnerAuth } from "../src/protocol.ts";
 import { startRunnerServer } from "../src/runners/server.ts";
 
@@ -38,7 +39,7 @@ async function startBackend(t: TestContext) {
 }
 
 async function startGateway(t: TestContext, backendUrl: string, gatewayBackendToken = GATEWAY_BACKEND_TOKEN) {
-  const gateway = await startRunnerServer({ port: 0, backendUrl, gatewayBackendToken }, 50);
+  const gateway = await startRunnerServer({ port: 0, backendUrl, gatewayBackendToken } as Config, 50);
   t.after(() => gateway.close());
   return { ...gateway, url: `http://127.0.0.1:${gateway.port}` };
 }

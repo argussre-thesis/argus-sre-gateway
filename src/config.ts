@@ -3,6 +3,9 @@ export interface Config {
   port: number;
   backendUrl: string;
   gatewayBackendToken: string;
+  mcpHost: string;
+  mcpPort: number;
+  agentGatewayToken: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -41,5 +44,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     port: port("PORT", 8080),
     backendUrl: httpUrl("BACKEND_URL", required("BACKEND_URL")),
     gatewayBackendToken: secret("GATEWAY_BACKEND_TOKEN"),
+    mcpHost: env.MCP_HOST || "127.0.0.1",
+    mcpPort: port("MCP_PORT", 8081),
+    agentGatewayToken: secret("AGENT_GATEWAY_TOKEN"),
   };
 }
