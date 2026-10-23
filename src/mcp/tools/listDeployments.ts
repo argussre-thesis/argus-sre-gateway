@@ -22,6 +22,21 @@ To see a deployment's pods or ReplicaSets, pass its "selector" to list_pods or l
             "Label selector on the Deployments' own labels, not their pods'. Usually not needed.",
           ),
       }),
+      outputSchema: z.looseObject({
+        deployments: z.array(
+          z.looseObject({
+            name: z.string(),
+            ready: z.string(),
+            upToDate: z.number(),
+            available: z.number(),
+            rollout: z.string(),
+            selector: z.string(),
+            images: z.array(z.string()),
+            createdAt: z.string(),
+          }),
+        ),
+        truncated: z.boolean(),
+      }),
     },
     (args) => runOp("list_deployments", args),
   );

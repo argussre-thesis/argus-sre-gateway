@@ -20,6 +20,32 @@ At most 500 pods; truncated: true means there were more.`,
           .optional()
           .describe('Label selector on the pods, e.g. "app=web"'),
       }),
+      outputSchema: z.looseObject({
+        pods: z.array(
+          z.looseObject({
+            name: z.string(),
+            status: z.string(),
+            ready: z.string(),
+            restarts: z.number(),
+            node: z.string().optional(),
+            owner: z.string().optional(),
+            createdAt: z.string(),
+            containers: z.array(
+              z.looseObject({
+                name: z.string(),
+                image: z.string(),
+                ready: z.boolean(),
+                restarts: z.number(),
+                state: z.string(),
+                lastTermination: z
+                  .looseObject({ reason: z.string().optional(), exitCode: z.number(), finishedAt: z.string().optional() })
+                  .optional(),
+              }),
+            ),
+          }),
+        ),
+        truncated: z.boolean(),
+      }),
     },
     (args) => runOp("list_pods", args),
   );

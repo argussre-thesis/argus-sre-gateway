@@ -9,7 +9,7 @@ import type { GatewayResult } from "../src/runners/server.ts";
 const AGENT_GATEWAY_TOKEN = "a".repeat(32);
 
 // No runner: every op answers `reply`, and its arguments are kept in `calls`.
-async function startMcp(t: TestContext, reply: GatewayResult = { ok: true, data: { pods: [] } }) {
+async function startMcp(t: TestContext, reply: GatewayResult = { ok: true, data: { pods: [], truncated: false } }) {
   const calls: unknown[][] = [];
   const mcp = await startMcpServer(
     { mcpHost: "127.0.0.1", mcpPort: 0, agentGatewayToken: AGENT_GATEWAY_TOKEN } as Config,
@@ -44,26 +44,56 @@ test("the tools are listed with strict schemas", async (t) => {
     list_deployments: ["namespace"],
     list_replicasets: ["namespace"],
   });
-  for (const tool of tools) assert.equal(tool.inputSchema.additionalProperties, false, tool.name);
+  for (const tool of tools) {
+    assert.equal(tool.inputSchema.additionalProperties, false, tool.name);
+    assert.equal(tool.outputSchema?.type, "object", tool.name);
+  }
 });
 
-test("a call runs its op on the URL's tenant and cluster and returns its data as text", async (t) => {
-  const { url, calls } = await startMcp(t);
-  const client = await connect(t, url);
-  // Every argument of every tool, named as the runner's ops name them: a renamed one fails here.
+test("a call runs its op on the URL's tenant and cluster and returns its data as text and structuredContent", async (t) => {
+  // Every argument of every tool, named as the runner's ops name them (a renamed one fails here), and a result its outputSchema accepts.
   const cases = {
-    list_pods: { namespace: "demo", labelSelector: "app=web" },
-    get_pod: { namespace: "demo", name: "web-1" },
-    get_logs: { namespace: "demo", pod: "web-1", container: "app", previous: true, tailLines: 50, sinceSeconds: 600 },
-    list_events: { namespace: "demo", involvedObject: "Pod/web-1", type: "Warning", sinceSeconds: 600 },
-    list_deployments: { namespace: "demo", labelSelector: "app=web" },
-    list_replicasets: { namespace: "demo", labelSelector: "app=web" },
+    list_pods: [{ namespace: "demo", labelSelector: "app=web" }, { pods: [], truncated: false }],
+    get_pod: [
+      { namespace: "demo", name: "web-1" },
+      { name: "web-1", status: "Running", createdAt: "2026-10-23T10:00:00Z", problems: [], containers: [] },
+    ],
+    get_logs: [
+      { namespace: "demo", pod: "web-1", container: "app", previous: true, tailLines: 50, sinceSeconds: 600 },
+      { lines: ["2026-10-23T10:00:00Z started"], truncated: false },
+    ],
+    list_events: [
+      { namespace: "demo", involvedObject: "Pod/web-1", type: "Warning", sinceSeconds: 600 },
+      { events: [], truncated: false },
+    ],
+    list_deployments: [{ namespace: "demo", labelSelector: "app=web" }, { deployments: [], truncated: false }],
+    list_replicasets: [{ namespace: "demo", labelSelector: "app=web" }, { replicaSets: [], truncated: false }],
   };
-  for (const [name, args] of Object.entries(cases)) {
-    const result = await client.callTool({ name, arguments: args });
-    assert.deepEqual(result, { content: [{ type: "text", text: '{"pods":[]}' }] }, name);
+  for (const [name, [args, data]] of Object.entries(cases)) {
+    const { url, calls } = await startMcp(t, { ok: true, data });
+    const result = await (await connect(t, url)).callTool({ name, arguments: args });
+    assert.deepEqual(result, { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data }, name);
+    assert.deepEqual(calls, [["t1", "minikube", name, args]], name);
   }
-  assert.deepEqual(calls, Object.entries(cases).map(([op, args]) => ["t1", "minikube", op, args]));
+});
+
+test("the outputSchema is open: an unknown field passes, a missing one fails the call", async (t) => {
+  const pod = { name: "web-1", status: "Running", ready: "1/1", restarts: 0, createdAt: "2026-10-23T10:00:00Z", containers: [] };
+  const call = async (data: unknown) =>
+    (await connect(t, (await startMcp(t, { ok: true, data })).url)).callTool({
+      name: "list_pods",
+      arguments: { namespace: "demo" },
+    });
+
+  // A field the schema doesn't know passes: the schema is open.
+  const data = { pods: [{ ...pod, newField: 1 }], truncated: false };
+  assert.deepEqual((await call(data)).structuredContent, data);
+
+  // A field the schema needs is missing: the server fails the call.
+  const { restarts, ...drifted } = pod;
+  const result = await call({ pods: [drifted], truncated: false });
+  assert.equal(result.isError, true);
+  assert.match((result.content as { text: string }[])[0]!.text, /Output validation error.*restarts/s);
 });
 
 test("a failed op is an error result with its code", async (t) => {

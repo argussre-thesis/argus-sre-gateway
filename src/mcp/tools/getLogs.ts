@@ -40,6 +40,7 @@ While a container waits in CrashLoopBackOff, its current logs are its last crash
             "Only lines from the last N seconds, a whole number up to 604800 (7 days)",
           ),
       }),
+      outputSchema: z.looseObject({ lines: z.array(z.string()), truncated: z.boolean() }),
     },
     (args) => runOp("get_logs", args),
   );

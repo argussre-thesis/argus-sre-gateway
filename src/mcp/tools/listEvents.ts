@@ -29,6 +29,21 @@ Kubernetes keeps events for about an hour, so older history isn't here, and the 
             "Only events from the last N seconds, a whole number from 1 to 3600",
           ),
       }),
+      outputSchema: z.looseObject({
+        events: z.array(
+          z.looseObject({
+            time: z.string().optional(),
+            firstTime: z.string().optional(),
+            type: z.string().optional(),
+            reason: z.string().optional(),
+            object: z.string(),
+            message: z.string().optional(),
+            count: z.number(),
+            source: z.string().optional(),
+          }),
+        ),
+        truncated: z.boolean(),
+      }),
     },
     (args) => runOp("list_events", args),
   );

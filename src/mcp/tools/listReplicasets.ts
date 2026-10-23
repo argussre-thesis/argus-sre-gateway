@@ -22,6 +22,42 @@ Pass the Deployment's "selector" (from list_deployments) as labelSelector: a who
             'Label selector on the ReplicaSets, e.g. a Deployment\'s selector "app=web"',
           ),
       }),
+      outputSchema: z.looseObject({
+        replicaSets: z.array(
+          z.looseObject({
+            name: z.string(),
+            owner: z.string().optional(),
+            revision: z.number().optional(),
+            changeCause: z.string().optional(),
+            restartedAt: z.string().optional(),
+            ready: z.string(),
+            createdAt: z.string(),
+            containers: z.array(
+              z.looseObject({
+                name: z.string(),
+                image: z.string().optional(),
+                command: z.array(z.string()).optional(),
+                args: z.array(z.string()).optional(),
+                ports: z.array(z.string()).optional(),
+                resources: z
+                  .looseObject({
+                    requests: z.record(z.string(), z.string()).optional(),
+                    limits: z.record(z.string(), z.string()).optional(),
+                  })
+                  .optional(),
+                probes: z.looseObject({
+                  liveness: z.string().optional(),
+                  readiness: z.string().optional(),
+                  startup: z.string().optional(),
+                }),
+                env: z.array(z.string()).optional(),
+                envFrom: z.array(z.string()).optional(),
+              }),
+            ),
+          }),
+        ),
+        truncated: z.boolean(),
+      }),
     },
     (args) => runOp("list_replicasets", args),
   );

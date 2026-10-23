@@ -45,7 +45,10 @@ export async function startMcpServer(
     const runOp: RunOp = async (op, args) => {
       const result = await sendOp(tenantId, cluster, op, args);
       return result.ok
-        ? { content: [{ type: "text", text: JSON.stringify(result.data) }] }
+        ? {
+            content: [{ type: "text", text: JSON.stringify(result.data) }],
+            structuredContent: result.data as Record<string, unknown>,
+          }
         : {
             content: [{ type: "text", text: `Error ${result.error.code}: ${result.error.message}` }],
             isError: true,
