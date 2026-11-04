@@ -37,6 +37,9 @@ test("the tools are listed with strict schemas", async (t) => {
   const { url } = await startMcp(t);
   const { tools } = await (await connect(t, url)).listTools();
   assert.deepEqual(Object.fromEntries(tools.map((tool) => [tool.name, tool.inputSchema.required])), {
+    list_namespaces: undefined,
+    list_nodes: undefined,
+    list_problem_pods: undefined,
     list_pods: ["namespace"],
     get_pod: ["namespace", "name"],
     get_logs: ["namespace", "pod"],
@@ -53,6 +56,51 @@ test("the tools are listed with strict schemas", async (t) => {
 test("a call runs its op on the URL's tenant and cluster and returns its data as text and structuredContent", async (t) => {
   // Every argument of every tool, named as the runner's ops name them (a renamed one fails here), and a result its outputSchema accepts.
   const cases = {
+    list_namespaces: [
+      {},
+      { namespaces: [{ name: "demo", status: "Active", createdAt: "2026-10-23T10:00:00Z" }], truncated: false },
+    ],
+    list_nodes: [
+      {},
+      {
+        nodes: [
+          {
+            name: "node-1",
+            ready: "True",
+            problems: [
+              {
+                type: "DiskPressure",
+                status: "True",
+                reason: "KubeletHasDiskPressure",
+                message: "ephemeral storage is low",
+                since: "2026-10-23T10:00:00Z",
+              },
+            ],
+            allocatable: { cpu: "1880m", memory: "2362648Ki", pods: "110" },
+            createdAt: "2026-10-23T10:00:00Z",
+          },
+        ],
+        truncated: false,
+      },
+    ],
+    list_problem_pods: [
+      {},
+      {
+        total: 14,
+        problems: [
+          {
+            namespace: "demo",
+            name: "web-1",
+            status: "CrashLoopBackOff",
+            ready: "0/1",
+            restarts: 7,
+            createdAt: "2026-10-23T10:00:00Z",
+            containers: [{ name: "web", image: "web:1", ready: false, restarts: 7, state: "waiting: CrashLoopBackOff" }],
+          },
+        ],
+        truncated: false,
+      },
+    ],
     list_pods: [{ namespace: "demo", labelSelector: "app=web" }, { pods: [], truncated: false }],
     get_pod: [
       { namespace: "demo", name: "web-1" },
