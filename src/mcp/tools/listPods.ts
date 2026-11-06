@@ -2,6 +2,28 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as z from "zod";
 import type { RunOp } from "../server.ts";
 
+export const podSummary = z.looseObject({
+  name: z.string(),
+  status: z.string(),
+  ready: z.string(),
+  restarts: z.number(),
+  node: z.string().optional(),
+  owner: z.string().optional(),
+  createdAt: z.string(),
+  containers: z.array(
+    z.looseObject({
+      name: z.string(),
+      image: z.string(),
+      ready: z.boolean(),
+      restarts: z.number(),
+      state: z.string(),
+      lastTermination: z
+        .looseObject({ reason: z.string().optional(), exitCode: z.number(), finishedAt: z.string().optional() })
+        .optional(),
+    }),
+  ),
+});
+
 export function registerListPods(server: McpServer, runOp: RunOp) {
   server.registerTool(
     "list_pods",
@@ -21,29 +43,7 @@ At most 500 pods; truncated: true means there were more.`,
           .describe('Label selector on the pods, e.g. "app=web"'),
       }),
       outputSchema: z.looseObject({
-        pods: z.array(
-          z.looseObject({
-            name: z.string(),
-            status: z.string(),
-            ready: z.string(),
-            restarts: z.number(),
-            node: z.string().optional(),
-            owner: z.string().optional(),
-            createdAt: z.string(),
-            containers: z.array(
-              z.looseObject({
-                name: z.string(),
-                image: z.string(),
-                ready: z.boolean(),
-                restarts: z.number(),
-                state: z.string(),
-                lastTermination: z
-                  .looseObject({ reason: z.string().optional(), exitCode: z.number(), finishedAt: z.string().optional() })
-                  .optional(),
-              }),
-            ),
-          }),
-        ),
+        pods: z.array(podSummary),
         truncated: z.boolean(),
       }),
     },

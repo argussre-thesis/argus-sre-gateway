@@ -13,7 +13,10 @@ import { registerGetLogs } from "./tools/getLogs.ts";
 import { registerGetPod } from "./tools/getPod.ts";
 import { registerListDeployments } from "./tools/listDeployments.ts";
 import { registerListEvents } from "./tools/listEvents.ts";
+import { registerListNamespaces } from "./tools/listNamespaces.ts";
+import { registerListNodes } from "./tools/listNodes.ts";
 import { registerListPods } from "./tools/listPods.ts";
+import { registerListProblemPods } from "./tools/listProblemPods.ts";
 import { registerListReplicasets } from "./tools/listReplicasets.ts";
 
 export type RunOp = (op: string, args: Record<string, unknown>) => Promise<CallToolResult>;
@@ -54,6 +57,9 @@ export async function startMcpServer(
             isError: true,
           };
     };
+    registerListNamespaces(server, runOp);
+    registerListNodes(server, runOp);
+    registerListProblemPods(server, runOp);
     registerListPods(server, runOp);
     registerGetPod(server, runOp);
     registerGetLogs(server, runOp);
