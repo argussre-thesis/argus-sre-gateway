@@ -180,9 +180,11 @@ export async function startRunnerServer(config: Config, pingInterval = 25_000) {
     const started = performance.now();
     const timeoutMs = DEFAULT_OP_TIMEOUT_MS + 2_000;
     return new Promise((resolve) => {
-      // We define the done function that runs only when runner answers.
       const done = (result: GatewayResult) => {
-
+        // Only the first completion removes `done` from pending.
+        // If it is already absent, the operation was answered, the socket
+        // disconnected, or the timeout fired; leave the Promise unresolved
+        // so the timer resolves it with a GATEWAY_TIMEOUT error.
         if (!socket.data.pending.delete(done)) return;
         clearTimeout(timer);
         const errorCode = result.ok ? undefined : result.error.code;
@@ -197,6 +199,7 @@ export async function startRunnerServer(config: Config, pingInterval = 25_000) {
         resolve(result);
       };
 
+      // if runner doesn't respond within timeoutMs, return a GATEWAY_TIMEOUT error to the caller
       const timer = setTimeout(
         () =>
           done({
@@ -209,7 +212,7 @@ export async function startRunnerServer(config: Config, pingInterval = 25_000) {
         timeoutMs,
       );
       socket.data.pending.add(done);
-      // We grab the result and run the done fuction, which clears timer and resolve(result) means return the outcome. 
+      // Send "op" with {id, op, args} to the runner, and pass the result to the done function when the runner answers.
       socket.emit("op", { id, op, args }, done);
     });
   }
